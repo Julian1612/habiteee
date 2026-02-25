@@ -16,20 +16,25 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onChange }) => 
   ] as const;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-base-bg/40 backdrop-blur-2xl border-t border-border-thin pb-safe">
-      <div className="flex justify-around items-center h-[70px] max-w-md mx-auto px-6">
+    <div className="fixed bottom-0 left-0 right-0 bg-base-bg/70 backdrop-blur-3xl border-t border-border-thin z-50">
+      {/* Massive Höhe von 110px und großzügiges pb-10 für maximale Ergonomie */}
+      <div className="flex justify-around items-center h-[110px] pb-10 max-w-md mx-auto px-10">
         {tabs.map(({ id, label, icon: Icon }) => {
           const isActive = activeTab === id;
           return (
             <button
               key={id}
               onClick={() => onChange(id)}
-              className={`flex flex-col items-center space-y-1 transition-all duration-500 ${
+              className={`flex flex-col items-center gap-2 transition-all duration-500 active:scale-90 ${
                 isActive ? 'text-accent-primary scale-110' : 'text-text-dim'
               }`}
             >
-              <Icon size={20} strokeWidth={isActive ? 1.5 : 1} />
-              <span className="text-[9px] uppercase tracking-[0.2em] font-light">{label}</span>
+              <Icon size={26} strokeWidth={isActive ? 1.6 : 1.2} />
+              <span className={`text-[10px] uppercase tracking-[0.25em] font-bold transition-colors ${
+                isActive ? 'text-accent-primary' : 'text-text-dim'
+              }`}>
+                {label}
+              </span>
             </button>
           );
         })}

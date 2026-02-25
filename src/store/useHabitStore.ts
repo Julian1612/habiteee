@@ -1,5 +1,5 @@
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import type { Habit, HabitState } from '../types'; // HabitRecord wurde hier entfernt, um den TS-Fehler zu beheben
+import type { Habit, HabitState } from '../types';
 
 const initialState: HabitState = {
   habits: [],
@@ -9,7 +9,8 @@ const initialState: HabitState = {
 export function useHabitStore() {
   const [state, setState] = useLocalStorage<HabitState>('habit-data', initialState);
 
-  // Sicherstellen, dass state immer valide Arrays hat (Schutz vor alten/korrupten Daten)
+  // Der safeState stellt sicher, dass alle Views (Journey, Presence) 
+  // immer mit validen Arrays arbeiten, selbst wenn das JSON unvollständig war.
   const safeState: HabitState = {
     habits: Array.isArray(state?.habits) ? state.habits : [],
     records: Array.isArray(state?.records) ? state.records : [],
@@ -20,11 +21,14 @@ export function useHabitStore() {
       ...habitData,
       id: crypto.randomUUID(),
       createdAt: Date.now(),
+      // Standardwerte setzen, falls sie im Formular fehlten
       steps: habitData.steps || [],
       category: habitData.category || 'Mind',
       goalValue: habitData.goalValue || 1,
       unit: habitData.unit || 'count',
-      customDays: habitData.customDays || [0, 1, 2, 3, 4, 5, 6]
+      customDays: habitData.customDays || [0, 1, 2, 3, 4, 5, 6],
+      priorityTime: habitData.priorityTime || 'all-day',
+      priority: habitData.priority || 'normal'
     };
     setState((prev) => ({
       ...prev,
@@ -35,21 +39,18 @@ export function useHabitStore() {
   const updateHabit = (id: string, data: Partial<Habit>) => {
     setState((prev) => ({
       ...prev,
-      habits: prev.habits.map((h) => (h.id === id ? { ...h, ...data } : h)),
+      habits: (prev.habits || []).map((h) => (h.id === id ? { ...h, ...data } : h)),
     }));
   };
 
   const deleteHabit = (id: string) => {
     setState((prev) => ({
       ...prev,
-      habits: prev.habits.filter((h) => h.id !== id),
-      records: prev.records.filter((r) => r.habitId !== id),
+      habits: (prev.habits || []).filter((h) => h.id !== id),
+      records: (prev.records || []).filter((r) => r.habitId !== id),
     }));
   };
 
-  /**
-   * Erfasst einen Fortschrittswert (z.B. +1 mal Sport oder +15 Minuten).
-   */
   const addRecordValue = (habitId: string, timestamp: number, value: number) => {
     setState((prev) => ({
       ...prev,
@@ -57,14 +58,12 @@ export function useHabitStore() {
     }));
   };
 
-  /**
-   * Löscht den letzten Eintrag für ein Habit (Undo-Funktion).
-   */
   const removeLastRecord = (habitId: string, timestamp: number) => {
     setState((prev) => {
       const records = prev.records || [];
+      // Wir suchen den letzten Record für dieses Habit am selben Tag
       const lastIndex = [...records].reverse().findIndex(
-        (r) => r.habitId === habitId && r.timestamp <= timestamp + 86400000 // Sucht im Bereich des Tages
+        (r) => r.habitId === habitId && Math.abs(r.timestamp - timestamp) < 86400000
       );
       
       if (lastIndex === -1) return prev;

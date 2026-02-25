@@ -3,18 +3,56 @@
 @theme {
   --color-base-bg: #030303;
   --color-base-card: #0a0a0a;
-  --color-accent-primary: #6366f1; /* Mystic Indigo */
-  --color-accent-soft: rgba(99, 102, 241, 0.1);
-  --color-text-vivid: #f8fafc;
-  --color-text-dim: #64748b;
+  --color-accent-primary: #6366f1;
+  --color-accent-soft: rgba(99, 102, 241, 0.15);
+  --color-text-vivid: #ffffff;
+  --color-text-dim: #94a3b8;
   --color-border-thin: #1e293b;
   
-  --radius-ios: 24px;
+  --radius-ios: 28px;
 }
 
 @layer base {
+  html, body {
+    /* Verhindert das Bouncen der gesamten Seite */
+    overscroll-behavior: none;
+    /* Nutzt die volle dynamische Viewport-Höhe des iPhones */
+    height: 100dvh;
+    width: 100vw;
+    overflow: hidden;
+    position: fixed;
+    margin: 0;
+    padding: 0;
+  }
+
   body {
     @apply bg-base-bg text-text-vivid antialiased tracking-tight;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    /* Native Apple System-Schriftarten */
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    /* Verhindert Textmarkierung für ein App-Gefühl */
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  /* VERHINDERT AUTO-ZOOM: Schriftgröße 16px ist Minimum für iOS Inputs */
+  input, textarea, select {
+    font-size: 16px !important;
+    user-select: text;
+  }
+
+  /* Der Hauptcontainer, der innerhalb der App scrollt */
+  #root {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    /* Respektiert Notch und Home-Indikator */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

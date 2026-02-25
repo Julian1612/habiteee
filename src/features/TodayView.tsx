@@ -9,14 +9,12 @@ export const TodayView = () => {
   const today = getStartOfDay(Date.now());
   const currentDayOfWeek = new Date().getDay();
 
-  // State für ausgeklappte Habits (Unteraufgaben)
   const [expandedHabits, setExpandedHabits] = useState<Record<string, boolean>>({});
 
   const toggleExpand = (id: string) => {
     setExpandedHabits(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  // Bestimme die aktuelle Tageszeit für den initialen Filter
   const getInitialTime = (): PriorityTime => {
     const hour = new Date().getHours();
     if (hour < 11) return 'morning';
@@ -27,7 +25,6 @@ export const TodayView = () => {
   const [activeTime, setActiveTime] = useState<PriorityTime | 'all'>(getInitialTime());
   const [activeCategory, setActiveCategory] = useState<string>('All');
 
-  // Dynamische Kategorien aus den vorhandenen Habits laden
   const categories = useMemo(() => {
     const cats = new Set(state.habits.map(h => h.category));
     return ['All', ...Array.from(cats)];
@@ -41,7 +38,6 @@ export const TodayView = () => {
     { id: 'all', label: 'Full Journey', icon: Zap },
   ] as const;
 
-  // Filter-Logik: Berücksichtigt Wochentage, Tageszeit und Kategorien
   const filteredHabits = useMemo(() => {
     return state.habits.filter(h => {
       const isCorrectDay = !h.customDays || h.customDays.includes(currentDayOfWeek);
@@ -51,11 +47,6 @@ export const TodayView = () => {
     });
   }, [state.habits, currentDayOfWeek, activeTime, activeCategory]);
 
-  /**
-   * Fortschrittsberechnung:
-   * Bei täglichen Habits zählt nur heute.
-   * Bei wöchentlichen/periodischen Habits zählt der Zeitraum seit dem Starttag.
-   */
   const getProgress = (habit: Habit) => {
     const periodStart = habit.frequencyType === 'daily' 
       ? today 
@@ -75,13 +66,13 @@ export const TodayView = () => {
   };
 
   return (
-    <div className="pt-8 animate-in fade-in duration-700 pb-56">
-      <header className="mb-8 px-1">
-        <h1 className="text-2xl font-extralight tracking-[0.3em] uppercase">Presence</h1>
-        <p className="text-text-dim text-[10px] uppercase tracking-widest mt-2">{formatDate(Date.now())}</p>
+    <div className="pt-4 animate-in fade-in duration-700 pb-80">
+      <header className="mb-10 px-1">
+        <h1 className="text-2xl font-extralight tracking-[0.3em] uppercase text-text-vivid">Presence</h1>
+        <p className="text-text-dim text-[10px] uppercase tracking-widest mt-2 font-bold">{formatDate(Date.now())}</p>
       </header>
 
-      <div className="space-y-4">
+      <div className="grid gap-4">
         {filteredHabits.map((habit) => {
           const current = getProgress(habit);
           const isCompleted = current >= habit.goalValue;
@@ -90,59 +81,62 @@ export const TodayView = () => {
           const hasSteps = (habit.steps || []).length > 0;
 
           return (
-            <div key={habit.id} className={`rounded-ios border transition-all duration-500 ${
-              isCompleted ? 'bg-accent-soft border-accent-primary/20' : 'bg-base-card border-border-thin'
+            <div key={habit.id} className={`rounded-ios border transition-all duration-500 overflow-hidden ${
+              isCompleted ? 'bg-accent-soft border-accent-primary/30' : 'bg-base-card border-border-thin'
             }`}>
               <div className="p-6 flex items-center justify-between">
-                <div onClick={() => hasSteps && toggleExpand(habit.id)} className="flex-1 cursor-pointer select-none">
+                <div onClick={() => hasSteps && toggleExpand(habit.id)} className="flex-1 cursor-pointer select-none active:opacity-70 transition-opacity">
                   <div className="flex items-center gap-2">
-                    <span className={`text-sm tracking-wide ${isCompleted ? 'text-accent-primary' : 'text-text-vivid'}`}>
+                    <span className={`text-sm tracking-wide font-bold ${isCompleted ? 'text-accent-primary' : 'text-text-vivid'}`}>
                       {habit.name}
                     </span>
                     {hasSteps && (
-                      <span className="text-text-dim/40">
-                        {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                      <span className="text-text-dim/50">
+                        {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                       </span>
                     )}
                   </div>
-                  <span className="text-[10px] text-text-dim mt-1 font-light tracking-wider block">
-                    {current} / {habit.goalValue} {habit.unit} {habit.frequencyType !== 'daily' && `(this ${habit.frequencyType})`}
+                  <span className="text-[11px] text-text-dim mt-1.5 font-bold tracking-wider block">
+                    {current} / {habit.goalValue} {habit.unit}
                   </span>
                 </div>
                 
-                <div className="flex gap-2">
+                <div className="flex gap-4">
                   {current > 0 && !isCompleted && (
-                    <button onClick={() => removeLastRecord(habit.id, today)} className="p-2 text-text-dim/40 hover:text-text-vivid transition-colors">
-                      <RotateCcw size={16} />
+                    <button 
+                      onClick={() => removeLastRecord(habit.id, today)} 
+                      className="p-2 text-text-dim active:text-text-vivid active:scale-90 transition-all"
+                    >
+                      <RotateCcw size={20} />
                     </button>
                   )}
                   <button 
                     onClick={() => !isCompleted && addRecordValue(habit.id, Date.now(), 1)}
-                    className={`transition-all ${isCompleted ? 'text-accent-primary' : 'text-accent-primary/60 hover:text-accent-primary'}`}
+                    className={`transition-all active:scale-90 p-1 ${isCompleted ? 'text-accent-primary' : 'text-accent-primary/80'}`}
                   >
-                    {isCompleted ? <Fingerprint size={28} /> : <Plus size={28} strokeWidth={1.5} />}
+                    {isCompleted ? <Fingerprint size={36} /> : <Plus size={36} strokeWidth={1.5} />}
                   </button>
                 </div>
               </div>
 
-              <div className="px-6 pb-2">
-                <div className="h-[2px] w-full bg-white/5 rounded-full overflow-hidden">
+              <div className="px-6 pb-4">
+                <div className="h-[4px] w-full bg-white/5 rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-accent-primary transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(99,102,241,0.5)]"
+                    className="h-full bg-accent-primary transition-all duration-1000 ease-out shadow-[0_0_12px_rgba(99,102,241,0.5)]"
                     style={{ width: `${progressPercent}%` }}
                   />
                 </div>
               </div>
 
               {isExpanded && hasSteps && (
-                <div className="px-6 pb-6 pt-2 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="h-[1px] w-full bg-border-thin mb-4 opacity-50" />
+                <div className="px-6 pb-6 pt-2 space-y-4 animate-in fade-in slide-in-from-top-2">
+                  <div className="h-[1px] w-full bg-border-thin opacity-30" />
                   {habit.steps.map(step => (
-                    <div key={step.id} onClick={() => toggleStep(habit.id, step.id)} className="flex items-center gap-3 cursor-pointer group/step select-none">
-                      <div className={`transition-colors ${step.isCompleted ? 'text-accent-primary' : 'text-text-dim/30 group-hover/step:text-text-dim'}`}>
-                        {step.isCompleted ? <CheckCircle2 size={16} /> : <Circle size={16} />}
+                    <div key={step.id} onClick={() => toggleStep(habit.id, step.id)} className="flex items-center gap-4 cursor-pointer active:opacity-60 transition-opacity select-none">
+                      <div className={`transition-colors ${step.isCompleted ? 'text-accent-primary' : 'text-text-dim'}`}>
+                        {step.isCompleted ? <CheckCircle2 size={20} /> : <Circle size={20} />}
                       </div>
-                      <span className={`text-[11px] transition-all ${step.isCompleted ? 'text-text-dim line-through opacity-50' : 'text-text-vivid'}`}>
+                      <span className={`text-sm font-medium transition-all ${step.isCompleted ? 'text-text-dim line-through opacity-40' : 'text-text-vivid'}`}>
                         {step.text}
                       </span>
                     </div>
@@ -154,23 +148,23 @@ export const TodayView = () => {
         })}
 
         {filteredHabits.length === 0 && (
-          <div className="py-20 text-center space-y-4">
-            <Filter size={32} className="mx-auto text-text-dim/10" />
-            <p className="text-text-dim text-[10px] italic opacity-50 tracking-[0.3em] uppercase">No echoes in this sphere</p>
+          <div className="py-24 text-center space-y-4">
+            <Filter size={32} className="mx-auto text-text-dim/20" />
+            <p className="text-text-dim text-[10px] italic font-bold tracking-[0.3em] uppercase">No echoes in this sphere</p>
           </div>
         )}
       </div>
 
-      {/* Mobile-optimierte Steuerung: Über der BottomNav fixiert */}
-      <div className="fixed bottom-[70px] left-0 right-0 bg-base-bg/80 backdrop-blur-xl border-t border-border-thin px-4 pt-4 pb-6 z-20">
-        <div className="max-w-md mx-auto space-y-4">
-          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+      {/* Steuerungseinheit: Exakt über der 110px Navigationsleiste */}
+      <div className="fixed bottom-[110px] left-0 right-0 bg-base-bg/80 backdrop-blur-2xl border-t border-border-thin px-4 pt-5 pb-10 z-40">
+        <div className="max-w-md mx-auto space-y-6">
+          <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar scroll-smooth">
             {categories.map(cat => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`whitespace-nowrap px-4 py-1.5 rounded-full text-[9px] uppercase tracking-widest border transition-all ${
-                  activeCategory === cat ? 'bg-accent-primary text-base-bg border-accent-primary' : 'text-text-dim border-border-thin'
+                className={`whitespace-nowrap px-6 py-2.5 rounded-full text-[10px] uppercase tracking-widest border font-bold transition-all active:scale-95 ${
+                  activeCategory === cat ? 'bg-accent-primary text-white border-accent-primary shadow-lg shadow-accent-primary/20' : 'text-text-dim border-border-thin'
                 }`}
               >
                 {cat}
@@ -178,17 +172,17 @@ export const TodayView = () => {
             ))}
           </div>
 
-          <nav className="flex justify-between bg-base-card/50 p-1 rounded-2xl border border-border-thin">
+          <nav className="flex justify-between bg-base-card/80 p-1.5 rounded-[24px] border border-border-thin shadow-2xl">
             {timeSlots.map(({ id, icon: Icon, label }) => (
               <button
                 key={id}
                 onClick={() => setActiveTime(id)}
-                className={`flex-1 flex flex-col items-center py-3 rounded-xl transition-all duration-500 ${
-                  activeTime === id ? 'bg-accent-soft text-accent-primary' : 'text-text-dim hover:text-text-vivid'
+                className={`flex-1 flex flex-col items-center py-4 rounded-[18px] transition-all duration-300 active:scale-95 ${
+                  activeTime === id ? 'bg-accent-soft text-accent-primary font-bold' : 'text-text-dim'
                 }`}
               >
-                <Icon size={18} strokeWidth={activeTime === id ? 2 : 1.2} />
-                <span className="text-[7px] uppercase tracking-widest mt-1 font-medium">{label}</span>
+                <Icon size={22} strokeWidth={activeTime === id ? 2 : 1.2} />
+                <span className="text-[8px] uppercase tracking-widest mt-2 font-bold">{label}</span>
               </button>
             ))}
           </nav>
