@@ -1,26 +1,27 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Edit3, Target } from 'lucide-react';
 import { useHabitStore } from '../store/useHabitStore';
 import { HabitForm } from './HabitForm';
-import type { Habit } from '../types';
+import type { Habit } from '../types'; // 'import type' behebt den TypeScript-Fehler
 
-export const HabitsView: React.FC = () => {
+export const HabitsView = () => {
   const { state, addHabit, updateHabit, deleteHabit } = useHabitStore();
   const [editingHabit, setEditingHabit] = useState<Habit | null | 'new'>(null);
 
-  // Gruppierung der Echoes nach Kategorien für mehr Struktur
+  // Gruppierung der Echoes nach Kategorien für eine klare Struktur
   const categorizedEchoes = useMemo(() => {
     const groups: Record<string, Habit[]> = {};
     (state.habits || []).forEach(h => {
-      if (!groups[h.category]) groups[h.category] = [];
-      groups[h.category].push(h);
+      const cat = h.category || 'General';
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(h);
     });
     return groups;
   }, [state.habits]);
 
   return (
     <div className="pt-8 animate-in fade-in duration-700 pb-12">
-      <header className="mb-12 flex justify-between items-center">
+      <header className="mb-12 flex justify-between items-center px-1">
         <h1 className="text-2xl font-extralight tracking-[0.3em] uppercase">Echoes</h1>
         <button 
           onClick={() => setEditingHabit('new')} 
@@ -53,7 +54,7 @@ export const HabitsView: React.FC = () => {
       <div className="space-y-12">
         {Object.entries(categorizedEchoes).map(([category, habits]) => (
           <section key={category} className="space-y-4">
-            <h2 className="text-[10px] uppercase tracking-[0.4em] text-text-dim/40 font-medium ml-1">
+            <h2 className="text-[10px] uppercase tracking-[0.4em] text-text-dim/40 font-medium ml-1 px-1">
               {category}
             </h2>
             <div className="space-y-3">
@@ -69,7 +70,7 @@ export const HabitsView: React.FC = () => {
                     <div className="flex items-center gap-2 mt-1">
                       <Target size={10} className="text-accent-primary/40" />
                       <span className="text-[9px] uppercase tracking-tighter text-text-dim/40">
-                        {h.goalValue} {h.unit} • {h.frequencyType}
+                        {h.goalValue} {h.unit} • {h.frequencyType} {/* Nutzung von goalValue statt targetCount */}
                       </span>
                     </div>
                   </div>

@@ -1,21 +1,22 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Fingerprint, Plus, RotateCcw, Zap, Sun, SunDim, Moon, Infinity as AllDayIcon, Filter, CheckCircle2, Circle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useHabitStore } from '../store/useHabitStore';
-import { getStartOfDay, formatDate } from '../utils/dateUtils';
-import type { PriorityTime } from '../types';
+import { getStartOfDay, formatDate, getStartOfPeriod } from '../utils/dateUtils';
+import type { PriorityTime, Habit } from '../types';
 
-export const TodayView: React.FC = () => {
+export const TodayView = () => {
   const { state, addRecordValue, removeLastRecord, updateHabit } = useHabitStore();
   const today = getStartOfDay(Date.now());
   const currentDayOfWeek = new Date().getDay();
 
-  // State für ausgeklappte Habits
+  // State für ausgeklappte Habits (Unteraufgaben)
   const [expandedHabits, setExpandedHabits] = useState<Record<string, boolean>>({});
 
   const toggleExpand = (id: string) => {
     setExpandedHabits(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
+  // Bestimme die aktuelle Tageszeit für den initialen Filter
   const getInitialTime = (): PriorityTime => {
     const hour = new Date().getHours();
     if (hour < 11) return 'morning';
@@ -26,6 +27,7 @@ export const TodayView: React.FC = () => {
   const [activeTime, setActiveTime] = useState<PriorityTime | 'all'>(getInitialTime());
   const [activeCategory, setActiveCategory] = useState<string>('All');
 
+  // Dynamische Kategorien aus den vorhandenen Habits laden
   const categories = useMemo(() => {
     const cats = new Set(state.habits.map(h => h.category));
     return ['All', ...Array.from(cats)];
@@ -39,6 +41,7 @@ export const TodayView: React.FC = () => {
     { id: 'all', label: 'Full Journey', icon: Zap },
   ] as const;
 
+  // Filter-Logik: Berücksichtigt Wochentage, Tageszeit und Kategorien
   const filteredHabits = useMemo(() => {
     return state.habits.filter(h => {
       const isCorrectDay = !h.customDays || h.customDays.includes(currentDayOfWeek);
@@ -48,9 +51,18 @@ export const TodayView: React.FC = () => {
     });
   }, [state.habits, currentDayOfWeek, activeTime, activeCategory]);
 
-  const getProgress = (habitId: string) => {
-    return state.records
-      .filter(r => r.habitId === habitId && getStartOfDay(r.timestamp) === today)
+  /**
+   * Fortschrittsberechnung:
+   * Bei täglichen Habits zählt nur heute.
+   * Bei wöchentlichen/periodischen Habits zählt der Zeitraum seit dem Starttag.
+   */
+  const getProgress = (habit: Habit) => {
+    const periodStart = habit.frequencyType === 'daily' 
+      ? today 
+      : getStartOfPeriod(habit.frequencyType, habit.periodStartDay);
+
+    return (state.records || [])
+      .filter(r => r.habitId === habit.id && r.timestamp >= periodStart)
       .reduce((sum, r) => sum + r.value, 0);
   };
 
@@ -63,44 +75,15 @@ export const TodayView: React.FC = () => {
   };
 
   return (
-    <div className="pt-8 animate-in fade-in duration-700 pb-20">
-      <header className="mb-8">
+    <div className="pt-8 animate-in fade-in duration-700 pb-56">
+      <header className="mb-8 px-1">
         <h1 className="text-2xl font-extralight tracking-[0.3em] uppercase">Presence</h1>
         <p className="text-text-dim text-[10px] uppercase tracking-widest mt-2">{formatDate(Date.now())}</p>
       </header>
 
-      <nav className="flex justify-between mb-8 bg-base-card/50 p-1 rounded-2xl border border-border-thin">
-        {timeSlots.map(({ id, icon: Icon, label }) => (
-          <button
-            key={id}
-            onClick={() => setActiveTime(id)}
-            className={`flex-1 flex flex-col items-center py-3 rounded-xl transition-all duration-500 ${
-              activeTime === id ? 'bg-accent-soft text-accent-primary' : 'text-text-dim hover:text-text-vivid'
-            }`}
-          >
-            <Icon size={18} strokeWidth={activeTime === id ? 2 : 1.2} />
-            <span className="text-[7px] uppercase tracking-widest mt-1 font-medium">{label}</span>
-          </button>
-        ))}
-      </nav>
-
-      <div className="flex gap-2 overflow-x-auto pb-4 no-scrollbar mb-4">
-        {categories.map(cat => (
-          <button
-            key={cat}
-            onClick={() => setActiveCategory(cat)}
-            className={`whitespace-nowrap px-4 py-1.5 rounded-full text-[9px] uppercase tracking-widest border transition-all ${
-              activeCategory === cat ? 'bg-accent-primary text-base-bg border-accent-primary' : 'text-text-dim border-border-thin'
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
-
       <div className="space-y-4">
         {filteredHabits.map((habit) => {
-          const current = getProgress(habit.id);
+          const current = getProgress(habit);
           const isCompleted = current >= habit.goalValue;
           const progressPercent = Math.min((current / habit.goalValue) * 100, 100);
           const isExpanded = expandedHabits[habit.id];
@@ -111,10 +94,7 @@ export const TodayView: React.FC = () => {
               isCompleted ? 'bg-accent-soft border-accent-primary/20' : 'bg-base-card border-border-thin'
             }`}>
               <div className="p-6 flex items-center justify-between">
-                <div 
-                  onClick={() => hasSteps && toggleExpand(habit.id)} 
-                  className="flex-1 cursor-pointer select-none"
-                >
+                <div onClick={() => hasSteps && toggleExpand(habit.id)} className="flex-1 cursor-pointer select-none">
                   <div className="flex items-center gap-2">
                     <span className={`text-sm tracking-wide ${isCompleted ? 'text-accent-primary' : 'text-text-vivid'}`}>
                       {habit.name}
@@ -126,7 +106,7 @@ export const TodayView: React.FC = () => {
                     )}
                   </div>
                   <span className="text-[10px] text-text-dim mt-1 font-light tracking-wider block">
-                    {current} / {habit.goalValue} {habit.unit}
+                    {current} / {habit.goalValue} {habit.unit} {habit.frequencyType !== 'daily' && `(this ${habit.frequencyType})`}
                   </span>
                 </div>
                 
@@ -145,7 +125,6 @@ export const TodayView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Fortschrittsbalken */}
               <div className="px-6 pb-2">
                 <div className="h-[2px] w-full bg-white/5 rounded-full overflow-hidden">
                   <div 
@@ -155,16 +134,11 @@ export const TodayView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Unteraufgaben (Steps) - Erscheinen beim Tippen */}
               {isExpanded && hasSteps && (
                 <div className="px-6 pb-6 pt-2 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
                   <div className="h-[1px] w-full bg-border-thin mb-4 opacity-50" />
                   {habit.steps.map(step => (
-                    <div 
-                      key={step.id} 
-                      onClick={() => toggleStep(habit.id, step.id)} 
-                      className="flex items-center gap-3 cursor-pointer group/step select-none"
-                    >
+                    <div key={step.id} onClick={() => toggleStep(habit.id, step.id)} className="flex items-center gap-3 cursor-pointer group/step select-none">
                       <div className={`transition-colors ${step.isCompleted ? 'text-accent-primary' : 'text-text-dim/30 group-hover/step:text-text-dim'}`}>
                         {step.isCompleted ? <CheckCircle2 size={16} /> : <Circle size={16} />}
                       </div>
@@ -182,11 +156,43 @@ export const TodayView: React.FC = () => {
         {filteredHabits.length === 0 && (
           <div className="py-20 text-center space-y-4">
             <Filter size={32} className="mx-auto text-text-dim/10" />
-            <p className="text-text-dim text-[10px] italic opacity-50 tracking-[0.3em] uppercase">
-              No echoes in this sphere
-            </p>
+            <p className="text-text-dim text-[10px] italic opacity-50 tracking-[0.3em] uppercase">No echoes in this sphere</p>
           </div>
         )}
+      </div>
+
+      {/* Mobile-optimierte Steuerung: Über der BottomNav fixiert */}
+      <div className="fixed bottom-[70px] left-0 right-0 bg-base-bg/80 backdrop-blur-xl border-t border-border-thin px-4 pt-4 pb-6 z-20">
+        <div className="max-w-md mx-auto space-y-4">
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {categories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`whitespace-nowrap px-4 py-1.5 rounded-full text-[9px] uppercase tracking-widest border transition-all ${
+                  activeCategory === cat ? 'bg-accent-primary text-base-bg border-accent-primary' : 'text-text-dim border-border-thin'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          <nav className="flex justify-between bg-base-card/50 p-1 rounded-2xl border border-border-thin">
+            {timeSlots.map(({ id, icon: Icon, label }) => (
+              <button
+                key={id}
+                onClick={() => setActiveTime(id)}
+                className={`flex-1 flex flex-col items-center py-3 rounded-xl transition-all duration-500 ${
+                  activeTime === id ? 'bg-accent-soft text-accent-primary' : 'text-text-dim hover:text-text-vivid'
+                }`}
+              >
+                <Icon size={18} strokeWidth={activeTime === id ? 2 : 1.2} />
+                <span className="text-[7px] uppercase tracking-widest mt-1 font-medium">{label}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react'
 import { BottomNav, type TabType } from './components/BottomNav';
 import { TodayView } from './features/TodayView'; // Rename internal labels to "Presence"
 import { HabitsView } from './features/HabitsView'; // Rename internal labels to "Echoes"

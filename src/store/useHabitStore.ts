@@ -1,5 +1,5 @@
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import type { Habit, HabitState, HabitRecord } from '../types';
+import type { Habit, HabitState } from '../types'; // HabitRecord wurde hier entfernt, um den TS-Fehler zu beheben
 
 const initialState: HabitState = {
   habits: [],
@@ -9,7 +9,7 @@ const initialState: HabitState = {
 export function useHabitStore() {
   const [state, setState] = useLocalStorage<HabitState>('habit-data', initialState);
 
-  // Schutz vor korrupten Daten
+  // Sicherstellen, dass state immer valide Arrays hat (Schutz vor alten/korrupten Daten)
   const safeState: HabitState = {
     habits: Array.isArray(state?.habits) ? state.habits : [],
     records: Array.isArray(state?.records) ? state.records : [],
@@ -21,10 +21,10 @@ export function useHabitStore() {
       id: crypto.randomUUID(),
       createdAt: Date.now(),
       steps: habitData.steps || [],
-      // Standardwerte falls nicht gesetzt
-      category: habitData.category || 'General',
+      category: habitData.category || 'Mind',
       goalValue: habitData.goalValue || 1,
       unit: habitData.unit || 'count',
+      customDays: habitData.customDays || [0, 1, 2, 3, 4, 5, 6]
     };
     setState((prev) => ({
       ...prev,
@@ -48,9 +48,7 @@ export function useHabitStore() {
   };
 
   /**
-   * Erfasst einen Fortschrittswert. 
-   * Bei "count" (z.B. 4x Sport) wird oft +1 gerechnet.
-   * Bei "minutes" (z.B. 30 Min Meditation) kann ein spezifischer Wert übergeben werden.
+   * Erfasst einen Fortschrittswert (z.B. +1 mal Sport oder +15 Minuten).
    */
   const addRecordValue = (habitId: string, timestamp: number, value: number) => {
     setState((prev) => ({
@@ -59,14 +57,16 @@ export function useHabitStore() {
     }));
   };
 
-  // Löscht den letzten Record eines Tages (für "Undo"-Funktion)
+  /**
+   * Löscht den letzten Eintrag für ein Habit (Undo-Funktion).
+   */
   const removeLastRecord = (habitId: string, timestamp: number) => {
     setState((prev) => {
       const records = prev.records || [];
-      // Finde den Index des letzten Eintrags für dieses Habit an diesem Tag
       const lastIndex = [...records].reverse().findIndex(
-        (r) => r.habitId === habitId && r.timestamp === timestamp
+        (r) => r.habitId === habitId && r.timestamp <= timestamp + 86400000 // Sucht im Bereich des Tages
       );
+      
       if (lastIndex === -1) return prev;
       
       const actualIndex = records.length - 1 - lastIndex;

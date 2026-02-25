@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Trash2, Hash, Clock, Layers, Sun, SunDim, Moon, Infinity as AllDayIcon } from 'lucide-react';
+import { X, Plus, Trash2, Hash, Clock, Layers, Sun, SunDim, Moon, Infinity as AllDayIcon, Shield } from 'lucide-react';
 import type { Habit, HabitStep, Priority, PriorityTime, UnitType, FrequencyType } from '../types';
 
 interface HabitFormProps {
@@ -63,15 +63,37 @@ export const HabitForm: React.FC<HabitFormProps> = ({ initialData, onSave, onClo
         </div>
       </div>
 
-      {/* Priority Time Selection (NEU) */}
+      {/* Priority Level Selection (Fix für setPriority) */}
       <div className="space-y-4">
         <label className="text-[9px] uppercase tracking-widest text-text-dim flex items-center gap-2">
-          <Clock size={12} /> Temporal Focus (Day Time)
+          <Shield size={12} /> Priority Level
+        </label>
+        <div className="flex gap-2">
+          {(['high', 'normal', 'low'] as Priority[]).map(p => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setPriority(p)}
+              className={`flex-1 py-2 rounded-xl border text-[10px] uppercase tracking-widest transition-all ${
+                priority === p ? 'border-accent-primary bg-accent-soft text-accent-primary font-bold' : 'border-border-thin text-text-dim'
+              }`}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Day Time Focus */}
+      <div className="space-y-4">
+        <label className="text-[9px] uppercase tracking-widest text-text-dim flex items-center gap-2">
+          <Clock size={12} /> Temporal Focus
         </label>
         <div className="grid grid-cols-4 gap-2">
           {timeOptions.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
+              type="button"
               onClick={() => setTime(id)}
               className={`flex flex-col items-center py-3 rounded-xl border transition-all ${
                 time === id ? 'border-accent-primary bg-accent-soft text-accent-primary' : 'border-border-thin text-text-dim'
@@ -84,7 +106,7 @@ export const HabitForm: React.FC<HabitFormProps> = ({ initialData, onSave, onClo
         </div>
       </div>
 
-      {/* Frequency & Days Picker (NEU) */}
+      {/* Cycle & Days */}
       <div className="space-y-4">
         <label className="text-[9px] uppercase tracking-widest text-text-dim flex items-center gap-2">
           <Clock size={12} /> Cycle & Days
@@ -113,6 +135,7 @@ export const HabitForm: React.FC<HabitFormProps> = ({ initialData, onSave, onClo
           {days.map((d, i) => (
             <button
               key={i}
+              type="button"
               onClick={() => toggleDay(i)}
               className={`w-8 h-8 rounded-full text-[10px] border transition-all ${
                 customDays.includes(i) ? 'bg-accent-primary border-accent-primary text-base-bg' : 'border-border-thin text-text-dim'
@@ -124,7 +147,7 @@ export const HabitForm: React.FC<HabitFormProps> = ({ initialData, onSave, onClo
         </div>
       </div>
 
-      {/* Goal & Units */}
+      {/* Target Volume */}
       <div className="space-y-4">
         <label className="text-[9px] uppercase tracking-widest text-text-dim flex items-center gap-2">
           <Hash size={12} /> Target Volume
@@ -136,7 +159,7 @@ export const HabitForm: React.FC<HabitFormProps> = ({ initialData, onSave, onClo
           />
           <div className="flex flex-1 gap-1">
             {units.map(u => (
-              <button key={u.id} onClick={() => setUnit(u.id)} className={`flex-1 py-2 rounded-lg text-[8px] uppercase border transition-all ${unit === u.id ? 'border-accent-primary text-accent-primary bg-accent-soft' : 'border-border-thin text-text-dim'}`}>
+              <button key={u.id} type="button" onClick={() => setUnit(u.id)} className={`flex-1 py-2 rounded-lg text-[8px] uppercase border transition-all ${unit === u.id ? 'border-accent-primary text-accent-primary bg-accent-soft' : 'border-border-thin text-text-dim'}`}>
                 {u.label}
               </button>
             ))}
@@ -144,7 +167,7 @@ export const HabitForm: React.FC<HabitFormProps> = ({ initialData, onSave, onClo
         </div>
       </div>
 
-      {/* Steps Section */}
+      {/* Steps */}
       <div className="space-y-4">
         <label className="text-[9px] uppercase tracking-widest text-text-dim flex items-center gap-2">
           <Layers size={12} /> Incremental Steps
@@ -162,10 +185,10 @@ export const HabitForm: React.FC<HabitFormProps> = ({ initialData, onSave, onClo
                 className="flex-1 bg-white/5 border-none rounded-xl px-4 py-2 text-xs focus:ring-1 ring-accent-primary/30 outline-none"
                 placeholder="Definition of Done..."
               />
-              <button onClick={() => setSteps(steps.filter(s => s.id !== step.id))} className="text-text-dim/30 hover:text-red-900 transition-colors"><Trash2 size={14} /></button>
+              <button type="button" onClick={() => setSteps(steps.filter(s => s.id !== step.id))} className="text-text-dim/30 hover:text-red-900 transition-colors"><Trash2 size={14} /></button>
             </div>
           ))}
-          <button onClick={() => setSteps([...steps, { id: crypto.randomUUID(), text: '', isCompleted: false }])} className="text-[10px] text-accent-primary flex items-center gap-2 pt-2 opacity-60 hover:opacity-100 transition-opacity">
+          <button type="button" onClick={() => setSteps([...steps, { id: crypto.randomUUID(), text: '', isCompleted: false }])} className="text-[10px] text-accent-primary flex items-center gap-2 pt-2 opacity-60 hover:opacity-100 transition-opacity">
             <Plus size={14} /> Add Step
           </button>
         </div>
@@ -173,10 +196,22 @@ export const HabitForm: React.FC<HabitFormProps> = ({ initialData, onSave, onClo
 
       <div className="pt-6 flex gap-3 sticky bottom-0 bg-base-card border-t border-border-thin/50">
         {initialData && (
-          <button onClick={onDelete} className="p-4 rounded-xl border border-red-900/20 text-red-900 hover:bg-red-900/10 transition-colors"><Trash2 size={18} /></button>
+          <button type="button" onClick={onDelete} className="p-4 rounded-xl border border-red-900/20 text-red-900 hover:bg-red-900/10 transition-colors"><Trash2 size={18} /></button>
         )}
         <button 
-          onClick={() => onSave({ name, category, priority, priorityTime: time, goalValue, unit, frequencyType: freq, periodStartDay: startDay, customDays, steps, targetCount: goalValue })}
+          type="button"
+          onClick={() => onSave({ 
+            name, 
+            category, 
+            priority, 
+            priorityTime: time, 
+            goalValue, 
+            unit, 
+            frequencyType: freq, 
+            periodStartDay: startDay, 
+            customDays, 
+            steps 
+          })} // "targetCount" hier endgültig entfernt
           className="flex-1 py-4 bg-accent-primary text-base-bg text-[10px] uppercase tracking-[0.3em] font-bold rounded-xl active:scale-[0.98] transition-all"
         >
           Etch into Time
