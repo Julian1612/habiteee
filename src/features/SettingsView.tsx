@@ -1,14 +1,17 @@
 import React, { useRef } from 'react';
-import { Download, Upload, Info, RotateCw, Database, List } from 'lucide-react';
+import { Download, Upload, Info, RotateCw, Database, List, X } from 'lucide-react';
 import { useHabitStore } from '../store/useHabitStore';
 import { exportData, exportHabits, importData, importHabits } from '../utils/exportUtils';
 
-export const SettingsView: React.FC = () => {
+interface SettingsViewProps {
+  onClose: () => void;
+}
+
+export const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
   const { state, setState } = useHabitStore();
   const userDataInputRef = useRef<HTMLInputElement>(null);
   const habitsInputRef = useRef<HTMLInputElement>(null);
 
-  // Lädt die Webseite neu, um den State frisch zu initialisieren
   const handleRefresh = () => window.location.reload();
 
   const onImportUserData = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -17,6 +20,7 @@ export const SettingsView: React.FC = () => {
     importData(file, (data) => {
       setState(data);
       alert('Vollständiges Backup erfolgreich eingespielt.');
+      onClose(); // Schließt die Settings automatisch nach erfolgreichem Import
     }, (err) => alert(err.message));
     e.target.value = '';
   };
@@ -25,28 +29,41 @@ export const SettingsView: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     importHabits(file, (habits) => {
-      // Fügt nur die Habits zum bestehenden State hinzu oder ersetzt diese
       setState(prev => ({ ...prev, habits }));
       alert('Habit-Konfigurationen erfolgreich importiert.');
+      onClose(); // Schließt die Settings automatisch nach erfolgreichem Import
     }, (err) => alert(err.message));
     e.target.value = '';
   };
 
   return (
-    <div className="pt-4 animate-in fade-in duration-500">
-      <header className="flex justify-between items-center mb-10 px-1">
-        <h1 className="text-2xl font-extralight tracking-[0.3em] uppercase text-text-vivid">Optionen</h1>
-        <button 
-          onClick={handleRefresh}
-          className="p-4 bg-base-card border border-border-thin rounded-full text-text-dim active:text-accent-primary active:scale-90 transition-all shadow-lg"
-          title="App neu laden"
-        >
-          <RotateCw size={22} />
-        </button>
+    <div className="animate-in fade-in slide-in-from-right-2 duration-500">
+      
+      {/* Neuer Header im Design der restlichen App */}
+      <header className="flex justify-between items-start mb-12 px-1">
+        <div>
+          <h1 className="text-2xl font-extralight tracking-[0.3em] uppercase text-text-vivid">System</h1>
+          <p className="text-text-dim text-[10px] uppercase tracking-widest mt-2 font-bold">Data Architecture</p>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={handleRefresh}
+            className="p-2 text-text-dim hover:text-accent-primary active:scale-90 transition-all duration-300"
+            title="App neu laden"
+          >
+            <RotateCw size={22} strokeWidth={1.5} />
+          </button>
+          <button 
+            onClick={onClose}
+            className="p-2 text-text-dim hover:text-accent-primary active:scale-90 transition-all duration-300"
+          >
+            <X size={26} strokeWidth={1.5} />
+          </button>
+        </div>
       </header>
 
       <div className="space-y-10">
-        {/* Sektion: Gesamte Nutzerdaten (Habits + Journey-Historie) */}
         <section>
           <h2 className="text-text-dim text-[10px] font-bold uppercase tracking-[0.25em] mb-4 ml-4">
             Volles Daten-Backup (Journey + Echoes)
@@ -79,7 +96,6 @@ export const SettingsView: React.FC = () => {
           </div>
         </section>
 
-        {/* Sektion: Nur Habit-Konfigurationen */}
         <section>
           <h2 className="text-text-dim text-[10px] font-bold uppercase tracking-[0.25em] mb-4 ml-4">
             Struktur-Export (Nur Habits)
@@ -112,7 +128,6 @@ export const SettingsView: React.FC = () => {
           </div>
         </section>
 
-        {/* Info-Bereich mit hohem Kontrast */}
         <div className="bg-accent-soft border border-accent-primary/20 rounded-ios p-6 flex items-start gap-4">
           <Info size={24} className="text-accent-primary shrink-0" />
           <div className="flex flex-col">
