@@ -3,7 +3,6 @@ import { Settings as SettingsIcon, Shield, Wind, Sparkles } from 'lucide-react';
 import { useHabitStore } from '../store/useHabitStore';
 import { SettingsView } from './SettingsView';
 import { getLastNDays, getStartOfDay } from '../utils/dateUtils';
-import type { HabitRecord } from '../types';
 
 export const JourneyView = () => {
   const [showSettings, setShowSettings] = useState(false);
@@ -11,7 +10,7 @@ export const JourneyView = () => {
   
   const pastDays = useMemo(() => getLastNDays(28), []);
 
-  // NEUE HEATMAP LOGIK: Berechnet die prozentuale Erfolgsquote pro Tag
+  // HEATMAP LOGIK: Berechnet die prozentuale Erfolgsquote pro Tag
   const dailyIntensity = useMemo(() => {
     const intensityMap: Record<number, number> = {};
     
@@ -69,11 +68,11 @@ export const JourneyView = () => {
 
   // Dynamische Klassen basierend auf dem erreichten Prozentsatz
   const getIntensityClass = (percentage: number) => {
-    if (percentage === 0) return 'bg-white/5';                   // Nichts geschafft / 0%
-    if (percentage <= 33) return 'bg-accent-primary/20';         // Ein bisschen was geschafft
-    if (percentage <= 66) return 'bg-accent-primary/40';         // Die Hälfte geschafft (z.B. 1 von 2)
-    if (percentage < 100) return 'bg-accent-primary/70';         // Fast alles geschafft
-    return 'bg-accent-primary shadow-[0_0_12px_rgba(99,102,241,0.4)]'; // 100% geschafft (z.B. 1/1 oder 3/3)
+    if (percentage === 0) return 'bg-white/5';                   
+    if (percentage <= 33) return 'bg-accent-primary/20';         
+    if (percentage <= 66) return 'bg-accent-primary/40';         
+    if (percentage < 100) return 'bg-accent-primary/70';         
+    return 'bg-accent-primary shadow-[0_0_12px_rgba(99,102,241,0.4)]'; 
   };
 
   return (
