@@ -1,39 +1,27 @@
-import React from 'react';
-import { useHabitStore } from './store/useHabitStore';
-import { HabitForm } from './features/HabitForm';
-import { HabitCard } from './components/HabitCard.tsx';
-import { Settings } from './features/Settings';
-import './App.css'; // Behält das generelle Vite-Styling bei
+import React, { useState } from 'react';
+import { BottomNav, type TabType } from './components/BottomNav';
+import { TodayView } from './features/TodayView'; // Rename internal labels to "Presence"
+import { HabitsView } from './features/HabitsView'; // Rename internal labels to "Echoes"
+import { JourneyView } from './features/JourneyView';
 
 function App() {
-  const { state, addHabit, toggleRecord } = useHabitStore();
+  const [activeTab, setActiveTab] = useState<TabType>('presence');
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'presence': return <TodayView />;
+      case 'echoes': return <HabitsView />;
+      case 'journey': return <JourneyView />;
+      default: return <TodayView />;
+    }
+  };
 
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px' }}>
-      <h1 style={{ textAlign: 'center', marginBottom: '32px' }}>Habit Tracker</h1>
-      
-      <HabitForm onAdd={addHabit} />
-      
-      <div style={{ marginBottom: '32px' }}>
-        <h2>Meine Habits</h2>
-        {state.habits.length === 0 ? (
-          <p style={{ color: '#888' }}>Noch keine Habits angelegt. Starte jetzt!</p>
-        ) : (
-          state.habits.map(habit => (
-            <HabitCard 
-              key={habit.id} 
-              habit={habit} 
-              // Filtern der Records für das spezifische Habit
-              records={state.records
-                .filter(r => r.habitId === habit.id)
-                .map(r => r.timestamp)} 
-              onToggle={toggleRecord} 
-            />
-          ))
-        )}
-      </div>
-
-      <Settings />
+    <div className="min-h-screen bg-base-bg text-text-vivid pb-24">
+      <main className="max-w-md mx-auto p-8 font-light">
+        {renderContent()}
+      </main>
+      <BottomNav activeTab={activeTab} onChange={setActiveTab} />
     </div>
   );
 }
