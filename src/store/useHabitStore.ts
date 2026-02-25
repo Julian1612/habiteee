@@ -9,8 +9,7 @@ const initialState: HabitState = {
 export function useHabitStore() {
   const [state, setState] = useLocalStorage<HabitState>('habit-data', initialState);
 
-  // Der safeState stellt sicher, dass alle Views (Journey, Presence) 
-  // immer mit validen Arrays arbeiten, selbst wenn das JSON unvollständig war.
+  // Der safeState stellt sicher, dass alle Views immer mit validen Arrays arbeiten
   const safeState: HabitState = {
     habits: Array.isArray(state?.habits) ? state.habits : [],
     records: Array.isArray(state?.records) ? state.records : [],
@@ -21,7 +20,6 @@ export function useHabitStore() {
       ...habitData,
       id: crypto.randomUUID(),
       createdAt: Date.now(),
-      // Standardwerte setzen, falls sie im Formular fehlten
       steps: habitData.steps || [],
       category: habitData.category || 'Mind',
       goalValue: habitData.goalValue || 1,
@@ -61,18 +59,72 @@ export function useHabitStore() {
   const removeLastRecord = (habitId: string, timestamp: number) => {
     setState((prev) => {
       const records = prev.records || [];
-      // Wir suchen den letzten Record für dieses Habit am selben Tag
+      // Finde den letzten Record für dieses Habit (innerhalb von 24h), der einen Value > 0 hat
       const lastIndex = [...records].reverse().findIndex(
-        (r) => r.habitId === habitId && Math.abs(r.timestamp - timestamp) < 86400000
+        (r) => r.habitId === habitId && 
+               Math.abs(r.timestamp - timestamp) < 86400000 &&
+               r.value > 0
       );
       
       if (lastIndex === -1) return prev;
       
       const actualIndex = records.length - 1 - lastIndex;
+      const targetRecord = records[actualIndex];
+
+      // INTELLIGENTES LÖSCHEN: Wenn der Record noch "Steps" beinhaltet, dürfen wir ihn 
+      // nicht löschen, sondern setzen nur den Value auf 0 zurück. Keine Features/Daten gehen verloren!
+      if (targetRecord.completedSteps && targetRecord.completedSteps.length > 0) {
+         const newRecords = [...records];
+         newRecords[actualIndex] = { ...targetRecord, value: 0 };
+         return { ...prev, records: newRecords };
+      }
+
+      // Wenn keine Steps dran hängen, kann er normal komplett gelöscht werden
       return {
         ...prev,
         records: records.filter((_, i) => i !== actualIndex)
       };
+    });
+  };
+
+  // NEU: Speichert abgehakte Sub-Tasks sicher im heutigen Tag, ohne das Template anzufassen
+  const toggleStepRecord = (habitId: string, stepId: string, timestamp: number) => {
+    setState((prev) => {
+      const records = prev.records || [];
+      const targetDay = new Date(timestamp).setHours(0, 0, 0, 0);
+      
+      // Suchen, ob es HEUTE schon IRGENDEINEN Record für dieses Habit gibt
+      const todaysRecords = records.filter((r) => {
+        const rDay = new Date(r.timestamp).setHours(0, 0, 0, 0);
+        return r.habitId === habitId && rDay === targetDay;
+      });
+
+      if (todaysRecords.length > 0) {
+        // Wenn ja, nehmen wir den ersten gefundenen Record von heute und speichern dort die Steps
+        const baseRecord = todaysRecords[0];
+        const currentSteps = baseRecord.completedSteps || [];
+        
+        const newSteps = currentSteps.includes(stepId)
+          ? currentSteps.filter(id => id !== stepId)
+          : [...currentSteps, stepId];
+        
+        return {
+          ...prev,
+          records: records.map(r => r === baseRecord ? { ...r, completedSteps: newSteps } : r)
+        };
+      } else {
+        // Kein Record heute vorhanden -> Wir legen einen unsichtbaren an (value: 0), 
+        // der ausschließlich dafür da ist, deine abgehakten Steps zu merken.
+        return {
+          ...prev,
+          records: [...records, { 
+            habitId, 
+            timestamp, 
+            value: 0, 
+            completedSteps: [stepId] 
+          }]
+        };
+      }
     });
   };
 
@@ -83,6 +135,7 @@ export function useHabitStore() {
     updateHabit, 
     deleteHabit, 
     addRecordValue, 
-    removeLastRecord 
+    removeLastRecord,
+    toggleStepRecord // Neu exportiert für die TodayView
   };
 }
