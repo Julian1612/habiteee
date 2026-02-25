@@ -158,6 +158,7 @@ export const TodayView = () => {
       {/* Steuerungseinheit: Exakt über der 110px Navigationsleiste */}
       <div className="fixed bottom-[110px] left-0 right-0 bg-base-bg/80 backdrop-blur-2xl border-t border-border-thin px-4 pt-5 pb-10 z-40">
         <div className="max-w-md mx-auto space-y-6">
+          {/* Horizontales Scrollen für Kategorien ohne sichtbare Scrollbar */}
           <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar scroll-smooth">
             {categories.map(cat => (
               <button
