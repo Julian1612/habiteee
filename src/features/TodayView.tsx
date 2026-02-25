@@ -1,80 +1,96 @@
-import React from 'react';
-import { Fingerprint, Circle, CheckCircle2 } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Fingerprint, Plus, RotateCcw, Zap } from 'lucide-react';
 import { useHabitStore } from '../store/useHabitStore';
 import { getStartOfDay, formatDate } from '../utils/dateUtils';
 
 export const TodayView: React.FC = () => {
-  const { state, toggleRecord, updateHabit } = useHabitStore();
+  const { state, addRecordValue, removeLastRecord } = useHabitStore();
   const today = getStartOfDay(Date.now());
-  const currentDayOfWeek = new Date().getDay();
 
-  const activeHabits = (state.habits || []).filter(h => 
-    !h.customDays || h.customDays.includes(currentDayOfWeek)
-  );
+  // Gruppierung nach Kategorien
+  const categorizedHabits = useMemo(() => {
+    const groups: Record<string, typeof state.habits> = {};
+    state.habits.forEach(h => {
+      if (!groups[h.category]) groups[h.category] = [];
+      groups[h.category].push(h);
+    });
+    return groups;
+  }, [state.habits]);
 
-  const toggleStep = (habitId: string, stepId: string) => {
-    const habit = state.habits.find(h => h.id === habitId);
-    if (!habit) return;
-    const steps = habit.steps || [];
-    const newSteps = steps.map(s => s.id === stepId ? { ...s, isCompleted: !s.isCompleted } : s);
-    updateHabit(habitId, { steps: newSteps });
+  // Fortschrittsberechnung für ein Habit am heutigen Tag
+  const getProgress = (habitId: string) => {
+    return state.records
+      .filter(r => r.habitId === habitId && getStartOfDay(r.timestamp) === today)
+      .reduce((sum, r) => sum + r.value, 0);
   };
 
   return (
-    <div className="pt-8 animate-in fade-in duration-700">
+    <div className="pt-8 animate-in fade-in duration-700 pb-12">
       <header className="mb-12">
         <h1 className="text-2xl font-extralight tracking-[0.3em] uppercase">Presence</h1>
         <p className="text-text-dim text-[10px] uppercase tracking-widest mt-2">{formatDate(Date.now())}</p>
       </header>
 
-      <div className="space-y-10">
-        {activeHabits.map((habit) => {
-          const isCompleted = (state.records || []).some(r => r.habitId === habit.id && getStartOfDay(r.timestamp) === today);
-          const steps = habit.steps || [];
-          const allStepsDone = steps.length === 0 || steps.every(s => s.isCompleted);
+      <div className="space-y-12">
+        {Object.entries(categorizedHabits).map(([category, habits]) => (
+          <section key={category} className="space-y-6">
+            <h2 className="text-[10px] uppercase tracking-[0.4em] text-accent-primary/60 font-medium ml-1">
+              {category}
+            </h2>
+            
+            <div className="space-y-4">
+              {habits.map((habit) => {
+                const current = getProgress(habit.id);
+                const isCompleted = current >= habit.goalValue;
+                const progressPercent = Math.min((current / habit.goalValue) * 100, 100);
 
-          return (
-            <div key={habit.id} className={`group rounded-ios transition-all duration-500 border ${isCompleted ? 'bg-accent-soft border-accent-primary/20' : 'bg-base-card border-border-thin'}`}>
-              <div className="p-6 flex items-center justify-between">
-                <div onClick={() => allStepsDone && !isCompleted && toggleRecord(habit.id, today)} className="flex-1 cursor-pointer">
-                  <span className={`text-sm tracking-wide block ${isCompleted ? 'text-accent-primary' : 'text-text-vivid'}`}>
-                    {habit.name}
-                    {habit.priority === 'high' && <span className="ml-2 text-[8px] text-accent-primary/50">●</span>}
-                  </span>
-                  {!isCompleted && steps.length > 0 && (
-                    <span className="text-[9px] text-text-dim mt-1 block">
-                      {steps.filter(s => s.isCompleted).length} / {steps.length} steps
-                    </span>
-                  )}
-                </div>
-                <button 
-                  disabled={!allStepsDone && !isCompleted}
-                  onClick={() => toggleRecord(habit.id, today)}
-                  className={`transition-all ${!allStepsDone && !isCompleted ? 'opacity-20' : 'opacity-100'} ${isCompleted ? 'text-accent-primary' : 'text-text-dim'}`}
-                >
-                  {isCompleted ? <Fingerprint size={28} /> : <Circle size={28} strokeWidth={1} />}
-                </button>
-              </div>
-
-              {!isCompleted && steps.length > 0 && (
-                <div className="px-6 pb-6 space-y-3 animate-in fade-in slide-in-from-top-2">
-                  {steps.map(step => (
-                    <div key={step.id} onClick={() => toggleStep(habit.id, step.id)} className="flex items-center gap-3 cursor-pointer group/step">
-                      <div className={`transition-colors ${step.isCompleted ? 'text-accent-primary' : 'text-text-dim/30 group-hover/step:text-text-dim'}`}>
-                        {step.isCompleted ? <CheckCircle2 size={16} /> : <Circle size={16} />}
+                return (
+                  <div key={habit.id} className={`p-6 rounded-ios border transition-all duration-500 ${isCompleted ? 'bg-accent-soft border-accent-primary/20' : 'bg-base-card border-border-thin'}`}>
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <span className={`text-sm tracking-wide block ${isCompleted ? 'text-accent-primary' : 'text-text-vivid'}`}>
+                          {habit.name}
+                        </span>
+                        <span className="text-[10px] text-text-dim mt-1 font-light tracking-wider">
+                          {current} / {habit.goalValue} {habit.unit}
+                        </span>
                       </div>
-                      <span className={`text-[11px] transition-all ${step.isCompleted ? 'text-text-dim line-through opacity-50' : 'text-text-vivid'}`}>{step.text}</span>
+                      <div className="flex gap-2">
+                        {current > 0 && !isCompleted && (
+                          <button onClick={() => removeLastRecord(habit.id, today)} className="p-2 text-text-dim/40 hover:text-text-vivid transition-colors">
+                            <RotateCcw size={16} strokeWidth={1.5} />
+                          </button>
+                        )}
+                        <button 
+                          onClick={() => !isCompleted && addRecordValue(habit.id, Date.now(), 1)}
+                          className={`transition-all ${isCompleted ? 'text-accent-primary' : 'text-accent-primary/60 hover:text-accent-primary'}`}
+                        >
+                          {isCompleted ? <Fingerprint size={28} /> : <Plus size={28} strokeWidth={1.5} />}
+                        </button>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
+
+                    {/* Minimalistischer Fortschrittsbalken */}
+                    <div className="h-[2px] w-full bg-white/5 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-accent-primary transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(99,102,241,0.5)]"
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
-        {activeHabits.length === 0 && (
-          <p className="text-center text-text-dim text-xs italic opacity-50">No habits for today.</p>
-        )}
+          </section>
+        ))}
       </div>
+
+      {state.habits.length === 0 && (
+        <div className="py-20 text-center space-y-4">
+          <Zap size={32} className="mx-auto text-text-dim/20" />
+          <p className="text-text-dim text-xs italic opacity-50 tracking-widest uppercase">Void of intentions</p>
+        </div>
+      )}
     </div>
   );
 };

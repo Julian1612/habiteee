@@ -1,5 +1,5 @@
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import type { Habit, HabitState } from '../types';
+import type { Habit, HabitState, HabitRecord } from '../types';
 
 const initialState: HabitState = {
   habits: [],
@@ -9,7 +9,7 @@ const initialState: HabitState = {
 export function useHabitStore() {
   const [state, setState] = useLocalStorage<HabitState>('habit-data', initialState);
 
-  // Sicherstellen, dass state immer valide Arrays hat (Schutz vor alten Daten)
+  // Schutz vor korrupten Daten
   const safeState: HabitState = {
     habits: Array.isArray(state?.habits) ? state.habits : [],
     records: Array.isArray(state?.records) ? state.records : [],
@@ -20,9 +20,11 @@ export function useHabitStore() {
       ...habitData,
       id: crypto.randomUUID(),
       createdAt: Date.now(),
-      // Fallback für fehlende Felder
       steps: habitData.steps || [],
-      customDays: habitData.customDays || [0, 1, 2, 3, 4, 5, 6]
+      // Standardwerte falls nicht gesetzt
+      category: habitData.category || 'General',
+      goalValue: habitData.goalValue || 1,
+      unit: habitData.unit || 'count',
     };
     setState((prev) => ({
       ...prev,
@@ -45,18 +47,43 @@ export function useHabitStore() {
     }));
   };
 
-  const toggleRecord = (habitId: string, timestamp: number) => {
+  /**
+   * Erfasst einen Fortschrittswert. 
+   * Bei "count" (z.B. 4x Sport) wird oft +1 gerechnet.
+   * Bei "minutes" (z.B. 30 Min Meditation) kann ein spezifischer Wert übergeben werden.
+   */
+  const addRecordValue = (habitId: string, timestamp: number, value: number) => {
+    setState((prev) => ({
+      ...prev,
+      records: [...(prev.records || []), { habitId, timestamp, value }]
+    }));
+  };
+
+  // Löscht den letzten Record eines Tages (für "Undo"-Funktion)
+  const removeLastRecord = (habitId: string, timestamp: number) => {
     setState((prev) => {
       const records = prev.records || [];
-      const exists = records.find(
+      // Finde den Index des letzten Eintrags für dieses Habit an diesem Tag
+      const lastIndex = [...records].reverse().findIndex(
         (r) => r.habitId === habitId && r.timestamp === timestamp
       );
-      if (exists) {
-        return { ...prev, records: records.filter((r) => r !== exists) };
-      }
-      return { ...prev, records: [...records, { habitId, timestamp }] };
+      if (lastIndex === -1) return prev;
+      
+      const actualIndex = records.length - 1 - lastIndex;
+      return {
+        ...prev,
+        records: records.filter((_, i) => i !== actualIndex)
+      };
     });
   };
 
-  return { state: safeState, setState, addHabit, updateHabit, deleteHabit, toggleRecord };
+  return { 
+    state: safeState, 
+    setState, 
+    addHabit, 
+    updateHabit, 
+    deleteHabit, 
+    addRecordValue, 
+    removeLastRecord 
+  };
 }
