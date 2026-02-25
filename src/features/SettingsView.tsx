@@ -8,7 +8,8 @@ interface SettingsViewProps {
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
-  const { state, setState } = useHabitStore();
+  // Destrukturierung von setRawState für den sicheren Import vollständiger Backups
+  const { state, setState, setRawState } = useHabitStore();
   const userDataInputRef = useRef<HTMLInputElement>(null);
   const habitsInputRef = useRef<HTMLInputElement>(null);
 
@@ -17,29 +18,34 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
   const onImportUserData = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
     importData(file, (data) => {
-      setState(data);
+      // Nutzt die neue Methode zur sicheren State-Überschreibung und Synchronisation
+      setRawState(data);
       alert('Vollständiges Backup erfolgreich eingespielt.');
-      onClose(); // Schließt die Settings automatisch nach erfolgreichem Import
+      onClose(); // Schließt die Settings automatisch nach Erfolg
     }, (err) => alert(err.message));
-    e.target.value = '';
+    
+    e.target.value = ''; // Input zurücksetzen für erneute Auswahl
   };
 
   const onImportHabits = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
     importHabits(file, (habits) => {
+      // Aktualisiert nur die Habits-Liste, behält Records (Fortschritte) bei
       setState(prev => ({ ...prev, habits }));
       alert('Habit-Konfigurationen erfolgreich importiert.');
-      onClose(); // Schließt die Settings automatisch nach erfolgreichem Import
+      onClose();
     }, (err) => alert(err.message));
+    
     e.target.value = '';
   };
 
   return (
     <div className="animate-in fade-in slide-in-from-right-2 duration-500">
       
-      {/* Neuer Header im Design der restlichen App */}
       <header className="flex justify-between items-start mb-12 px-1">
         <div>
           <h1 className="text-2xl font-extralight tracking-[0.3em] uppercase text-text-vivid">System</h1>

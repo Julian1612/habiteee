@@ -9,10 +9,16 @@ const initialState: HabitState = {
 export function useHabitStore() {
   const [state, setState] = useLocalStorage<HabitState>('habit-data', initialState);
 
-  // Der safeState stellt sicher, dass alle Views immer mit validen Arrays arbeiten
   const safeState: HabitState = {
     habits: Array.isArray(state?.habits) ? state.habits : [],
     records: Array.isArray(state?.records) ? state.records : [],
+  };
+
+  const setRawState = (newState: HabitState) => {
+    setState({
+      habits: Array.isArray(newState.habits) ? newState.habits : [],
+      records: Array.isArray(newState.records) ? newState.records : [],
+    });
   };
 
   const addHabit = (habitData: Omit<Habit, 'id' | 'createdAt'>) => {
@@ -59,10 +65,11 @@ export function useHabitStore() {
   const removeLastRecord = (habitId: string, timestamp: number) => {
     setState((prev) => {
       const records = prev.records || [];
-      // Finde den letzten Record für dieses Habit (innerhalb von 24h), der einen Value > 0 hat
+      const dayStart = new Date(timestamp).setHours(0, 0, 0, 0);
+      
       const lastIndex = [...records].reverse().findIndex(
         (r) => r.habitId === habitId && 
-               Math.abs(r.timestamp - timestamp) < 86400000 &&
+               new Date(r.timestamp).setHours(0, 0, 0, 0) === dayStart &&
                r.value > 0
       );
       
@@ -71,15 +78,12 @@ export function useHabitStore() {
       const actualIndex = records.length - 1 - lastIndex;
       const targetRecord = records[actualIndex];
 
-      // INTELLIGENTES LÖSCHEN: Wenn der Record noch "Steps" beinhaltet, dürfen wir ihn 
-      // nicht löschen, sondern setzen nur den Value auf 0 zurück. Keine Features/Daten gehen verloren!
       if (targetRecord.completedSteps && targetRecord.completedSteps.length > 0) {
          const newRecords = [...records];
          newRecords[actualIndex] = { ...targetRecord, value: 0 };
          return { ...prev, records: newRecords };
       }
 
-      // Wenn keine Steps dran hängen, kann er normal komplett gelöscht werden
       return {
         ...prev,
         records: records.filter((_, i) => i !== actualIndex)
@@ -87,20 +91,17 @@ export function useHabitStore() {
     });
   };
 
-  // NEU: Speichert abgehakte Sub-Tasks sicher im heutigen Tag, ohne das Template anzufassen
   const toggleStepRecord = (habitId: string, stepId: string, timestamp: number) => {
     setState((prev) => {
       const records = prev.records || [];
       const targetDay = new Date(timestamp).setHours(0, 0, 0, 0);
       
-      // Suchen, ob es HEUTE schon IRGENDEINEN Record für dieses Habit gibt
       const todaysRecords = records.filter((r) => {
         const rDay = new Date(r.timestamp).setHours(0, 0, 0, 0);
         return r.habitId === habitId && rDay === targetDay;
       });
 
       if (todaysRecords.length > 0) {
-        // Wenn ja, nehmen wir den ersten gefundenen Record von heute und speichern dort die Steps
         const baseRecord = todaysRecords[0];
         const currentSteps = baseRecord.completedSteps || [];
         
@@ -113,8 +114,6 @@ export function useHabitStore() {
           records: records.map(r => r === baseRecord ? { ...r, completedSteps: newSteps } : r)
         };
       } else {
-        // Kein Record heute vorhanden -> Wir legen einen unsichtbaren an (value: 0), 
-        // der ausschließlich dafür da ist, deine abgehakten Steps zu merken.
         return {
           ...prev,
           records: [...records, { 
@@ -131,11 +130,12 @@ export function useHabitStore() {
   return { 
     state: safeState, 
     setState, 
+    setRawState,
     addHabit, 
     updateHabit, 
     deleteHabit, 
     addRecordValue, 
     removeLastRecord,
-    toggleStepRecord // Neu exportiert für die TodayView
+    toggleStepRecord 
   };
 }
